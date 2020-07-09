@@ -3,7 +3,7 @@ clc;
 
 %% Research Code by Agus Hasan
 
-load DATA.txt;  % date | month | susceptible cases (S) | probable cases (P) | active cases (I) | recovered cases (R) | death cases (D)
+load DATA.txt;  % date | month | susceptible cases (S) | probable cases (P) | active cases (I) | recovered cases (R)
 load RtW.mat;   % Rt without PDP
 
 Tinf     = 12;      % infectious time
