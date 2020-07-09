@@ -32,9 +32,9 @@ for m = 1:3
 % Infection time
 Ti     = Tinf-Std_Tinf*sigma+(m-1)*Std_Tinf*sigma;    % infection time with standard dev. 1 day
 gamma  = (1-CFR)/Ti;    % recovery date
-mu1   = CFR/(60*360);
+mu1   = CFR/(72*360);
 mu2   = CFR/Ti;
-eps    = gamma+mu2;   % negative testing rate
+eps    = gamma;   % negative testing rate
 kappa  = 0.08;          % positive testing rate
 
 %% Initialization
