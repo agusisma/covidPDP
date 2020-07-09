@@ -35,7 +35,7 @@ gamma  = (1-CFR)/Ti;    % recovery date
 mu1   = CFR/(72*360);
 mu2   = CFR/Ti;
 eps    = gamma;   % negative testing rate
-kappa  = 0.08;          % positive testing rate
+kappa  = gamma;          % positive testing rate
 
 %% Initialization
 xhat     = [N-2; 1; 1; 0; 1];        % initial condition
