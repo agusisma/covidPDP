@@ -3,7 +3,7 @@ clc;
 
 %% Research Code by Agus Hasan
 
-load DATA.mat;  % date | month | susceptible cases (S) | probable cases (P) | active cases (I) | recovered cases (R) | death cases (D)
+load DATA.txt;  % date | month | susceptible cases (S) | probable cases (P) | active cases (I) | recovered cases (R) | death cases (D)
 load RtW.mat;   % Rt without PDP
 
 Tinf     = 12;      % infectious time
@@ -18,28 +18,27 @@ t        = dt:dt:tf;
 x2       = [td, fliplr(td)];
 
 %% Measurement/data matrix
-C = [1 0 0 0 0 0;
-     0 1 0 0 0 0;
-     0 0 1 0 0 0;
-     0 0 0 1 0 0;
-     0 0 0 0 1 0];
+C = [1 0 0 0 0;
+     0 1 0 0 0;
+     0 0 1 0 0;
+     0 0 0 1 0];
  
 %% Noise
-QF = diag([10 10 10 5 5 0.2]);   % process and measurement covariance matrices
-RF = diag([100 10 5 5 1]);       % are considered as tuning parameters
+QF = diag([10 10 10 5 0.2]);   % process and measurement covariance matrices
+RF = diag([100 10 5 1]);       % are considered as tuning parameters
 
 %% Numerical Simulation
 for m = 1:3
 % Infection time
 Ti     = Tinf-Std_Tinf*sigma+(m-1)*Std_Tinf*sigma;    % infection time with standard dev. 1 day
 gamma  = (1-CFR)/Ti;    % recovery date
-delta  = CFR/Ti;        % death rate
-omega  = delta;         % death rate
-eps    = gamma+delta;   % negative testing rate
+mu1   = CFR/(60*360);
+mu2   = CFR/Ti;
+eps    = gamma+mu2;   % negative testing rate
 kappa  = 0.08;          % positive testing rate
 
 %% Initialization
-xhat     = [N-2; 1; 1; 0; 0; 1];        % initial condition
+xhat     = [N-2; 1; 1; 0; 1];        % initial condition
 xhatBeta = 0;                           
 Pplus    = 1000000*eye(length(xhat));
 % for plotting
@@ -52,28 +51,25 @@ for i=1:((tf-1)/dt)
      y = [interp1(0:1:tf-1,DATA(:,3),t);    % S
          interp1(0:1:tf-1,DATA(:,4),t);     % P
          interp1(0:1:tf-1,DATA(:,5),t);     % I
-         interp1(0:1:tf-1,DATA(:,6),t);     % R
-         interp1(0:1:tf-1,DATA(:,7),t)];    % D
+         interp1(0:1:tf-1,DATA(:,6),t)];     % R
      % simulating the model
-     xhat(1) = xhat(1)-xhat(6)*xhat(1)*(xhat(2)+xhat(3))*dt/N+eps*dt*xhat(2);
-     xhat(2) = xhat(2)+xhat(6)*xhat(1)*xhat(2)*dt/N-(eps+kappa+omega)*xhat(2)*dt;
-     xhat(3) = xhat(3)+xhat(6)*xhat(1)*xhat(3)*dt/N+kappa*xhat(2)*dt-(gamma+delta)*xhat(3)*dt;
-     xhat(4) = xhat(4)+gamma*xhat(3)*dt;
-     xhat(5) = xhat(5)+delta*xhat(3)*dt+omega*xhat(2)*dt;
-     xhat(6) = xhat(6);
+     xhat(1) = xhat(1)-xhat(5)*xhat(1)*(xhat(2)+xhat(3))*dt/N+(mu2+eps)*xhat(2)*dt+mu2*xhat(3)*dt+mu1*xhat(4)*dt;
+     xhat(2) = xhat(2)+xhat(5)*xhat(1)*xhat(2)*dt/N-(kappa+eps+mu2)*xhat(2)*dt;
+     xhat(3) = xhat(3)+xhat(5)*xhat(1)*xhat(3)*dt/N+kappa*xhat(2)*dt-(gamma+mu2)*xhat(3)*dt;
+     xhat(4) = xhat(4)+gamma*xhat(3)*dt-mu1*xhat(4)*dt;
+     xhat(5) = xhat(5);     
     % calculating the Jacobian matrix
-    FX    = [1-xhat(6)*(xhat(2)+xhat(3))*dt/N -xhat(6)*xhat(1)*dt/N+eps*dt -xhat(6)*xhat(1)*dt/N 0 0 -xhat(1)*(xhat(2)+xhat(3))*dt/N;
-             xhat(6)*xhat(2)*dt/N 1+xhat(6)*xhat(1)*dt/N-(eps+kappa+omega)*dt 0 0 0 xhat(1)*xhat(2)*dt/N;
-             xhat(6)*xhat(3)*dt/N kappa*dt 1+xhat(6)*xhat(1)*dt/N-(gamma+delta)*dt 0 0 xhat(1)*xhat(3)*dt/N;
-             0 0 gamma*dt 1 0 0;
-             0 omega*dt delta*dt 0 1 0;
-             0 0 0 0 0 1];
+    FX    = [1-xhat(5)*(xhat(2)+xhat(3))*dt/N -xhat(5)*xhat(1)*dt/N+(mu2+eps)*dt -xhat(5)*xhat(1)*dt/N+mu2*dt mu1*dt -xhat(1)*(xhat(2)+xhat(3))*dt/N;
+             xhat(5)*xhat(2)*dt/N 1+xhat(5)*xhat(1)*dt/N-(eps+kappa+mu2)*dt 0 0 xhat(1)*xhat(2)*dt/N;
+             xhat(5)*xhat(3)*dt/N kappa*dt 1+xhat(5)*xhat(1)*dt/N-(gamma+mu2)*dt 0 xhat(1)*xhat(3)*dt/N;
+             0 0 gamma*dt 1-mu1*dt 0;
+             0 0 0 0 1];
     Pmin  = FX*Pplus*FX'+QF;
     % update 
     KF    = Pmin*C'*inv(C*Pmin*C'+RF);  % Kalman gain
     xhat  = xhat + KF*(y(:,i)-C*xhat);
-    Pplus = (eye(6)-KF*C)*Pmin;
-    xhat(6) = max(0,(xhat(1)/N)*xhat(6));
+    Pplus = (eye(5)-KF*C)*Pmin;
+    xhat(5) = max(0,(xhat(1)/N)*xhat(5));
 end
 
 windowSize = 300;
@@ -89,10 +85,8 @@ xhatIArray  = [];
 xhatI       = xhatArray(3,tf);
 xhatRArray  = [];
 xhatR       = xhatArray(4,tf);
-xhatDArray  = [];
-xhatD       = xhatArray(5,tf);
 xhatBArray  = [];
-xhatB       = xhatArray(6,tf);
+xhatB       = xhatArray(5,tf);
 for i=1:tf-1
     xhatSArray  = [xhatSArray xhatS];
     xhatS       = xhatArray(1,(1/dt)*i);
@@ -102,17 +96,14 @@ for i=1:tf-1
     xhatI       = xhatArray(3,(1/dt)*i);
     xhatRArray  = [xhatRArray xhatR];
     xhatR       = xhatArray(4,(1/dt)*i);
-    xhatDArray  = [xhatDArray xhatD];
-    xhatD       = xhatArray(5,(1/dt)*i);
     xhatBArray  = [xhatBArray xhatB];
-    xhatB       = xhatArray(6,(1/dt)*i);
+    xhatB       = xhatArray(5,(1/dt)*i);
 end
 
 xhatSArray  = [xhatSArray xhatS];
 xhatPArray  = [xhatPArray xhatP];
 xhatIArray  = [xhatIArray xhatI];
 xhatRArray  = [xhatRArray xhatR];
-xhatDArray  = [xhatDArray xhatD];
 xhatBArray  = [xhatBArray xhatB];
 
 %% Calculating the effective reproduction number
@@ -120,9 +111,9 @@ R0Array = [];
 R0 = 0;
 for j = 1:tf
     R0Array = [R0Array R0];
-    M = [xhatBArray(j)/(eps+kappa+omega) 0;
-         xhatBArray(j)*kappa/((gamma+delta)*(eps+kappa+omega)) xhatBArray(j)/(gamma+delta)];
-    R0 = max(xhatBArray(j)/(eps+kappa+omega),xhatBArray(j)/(gamma+delta));
+    M = [xhatBArray(j)/(eps+kappa+mu2) 0;
+         xhatBArray(j)*kappa/((gamma+mu2)*(eps+kappa+mu2)) xhatBArray(j)/(gamma+mu2)];
+    R0 = max(xhatBArray(j)/(eps+kappa+mu2),xhatBArray(j)/(gamma+mu2));
 end
 
 Z(m,:) = R0Array;
@@ -140,6 +131,16 @@ curve2 = smooth(curve2);
 
 figure(1)
 subplot(2,2,1)
+plot(td,DATA(:,3),'ob','LineWidth',6)
+hold on
+plot(td,xhatSArray,'-r','LineWidth',4);
+xlim([min(td) max(td)])
+ylabel('Susceptible Cases')
+set(gca,'color','none','FontSize',36)
+legend('Actual','Estimated')
+grid on;
+grid minor;
+subplot(2,2,2)
 plot(td,DATA(:,4),'ob','LineWidth',6)
 hold on
 plot(td,xhatPArray,'-r','LineWidth',4);
@@ -149,7 +150,7 @@ set(gca,'color','none','FontSize',36)
 legend('Actual','Estimated')
 grid on;
 grid minor;
-subplot(2,2,2)
+subplot(2,2,3)
 plot(td,DATA(:,5),'ob','LineWidth',6);
 hold on
 plot(td,xhatIArray,'-r','LineWidth',4)
@@ -159,7 +160,7 @@ set(gca,'color','none','FontSize',36)
 legend('Actual','Estimated')
 grid on;
 grid minor;
-subplot(2,2,3)
+subplot(2,2,4)
 plot(td,DATA(:,6),'ob','LineWidth',6);
 hold on
 plot(td,xhatRArray,'-r','LineWidth',4)
@@ -167,17 +168,6 @@ xlim([min(td) max(td)])
 ylabel('Recovered Cases')
 set(gca,'color','none','FontSize',36)
 legend('Actual','Estimated')
-grid on;
-grid minor;
-subplot(2,2,4)
-plot(td,DATA(:,7),'ob','LineWidth',6);
-hold on
-plot(td,xhatDArray,'-r','LineWidth',4)
-xlim([min(td) max(td)])
-ylabel('Death Cases')
-set(gca,'color','none','FontSize',36)
-legend('Actual','Estimated')
-alpha(0.3)
 grid on;
 grid minor;
 
@@ -212,10 +202,10 @@ ax.YAxis(1).Color = 'k';
 ax.YAxis(2).Color = 'k';
 
 figure(3)
-STC = [DATA(:,4) DATA(:,5) DATA(:,6) DATA(:,7)];
+STC = [DATA(:,4) DATA(:,5) DATA(:,6)];
 bar(td,STC,'stacked')
 set(gca,'color','none','FontSize',36)
 grid on;
 grid minor;
 alpha(0.8)
-legend('Probable Cases','Active Cases','Recovered Cases','Death Cases')
+legend('Probable Cases','Active Cases','Recovered Cases')
