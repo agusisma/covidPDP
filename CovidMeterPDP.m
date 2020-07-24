@@ -190,7 +190,7 @@ hold on;
 plot(td,RtW(2,:),'-r','LineWidth',4)
 hold on;
 plot(td,ones(1,tf),':c','LineWidth',4)
-set(gca,'color','none','FontSize',36)
+set(gca,'color','none','FontSize',36) 
 ylabel('Rt','color','k')
 xlim([min(td) max(td)])
 grid on;
