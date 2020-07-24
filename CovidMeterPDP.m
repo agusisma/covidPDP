@@ -129,6 +129,29 @@ end
 curve1 = smooth(curve1);
 curve2 = smooth(curve2);
 
+%% Calculate RRMSE
+
+RRMSES  = 0;
+RRMSEP  = 0;
+RRMSEI  = 0;
+RRMSER  = 0;
+for p = 1:length(td)
+    RRMSES  = RRMSES +((xhatSArray(p)-DATA(p,3)')/max(1,DATA(p,3)))^2;
+    RRMSEP  = RRMSEP +((xhatPArray(p)-DATA(p,4)')/max(1,DATA(p,4)))^2;
+    RRMSEI  = RRMSEI +((xhatIArray(p)-DATA(p,5)')/max(1,DATA(p,5)))^2;
+    RRMSER  = RRMSER +((xhatRArray(p)-DATA(p,6)')/max(1,DATA(p,6)))^2;
+end
+
+RRMSES  = (1/length(td))*RRMSES
+RRMSEP  = (1/length(td))*RRMSEP
+RRMSEI  = (1/length(td))*RRMSEI
+RRMSER  = (1/length(td))*RRMSER
+
+RRMSET = (RRMSES+RRMSEP+RRMSEI+RRMSER)
+
+
+%% Plotting
+
 figure(1)
 subplot(2,2,1)
 plot(td,DATA(:,3),'ob','LineWidth',6)
@@ -177,7 +200,6 @@ bar(td,DATA(:,5),'g')
 hold on
 bar(td,DATA(:,4),'y')
 ylabel('Cases','color','k')
-alpha(0.1)
 yyaxis right
 inBetween = [curve1', fliplr(curve2')];
 fill(x2, inBetween, 'b');
@@ -189,14 +211,19 @@ fill(x2, inBetween, 'r');
 hold on;
 plot(td,RtW(2,:),'-r','LineWidth',4)
 hold on;
-plot(td,ones(1,tf),':c','LineWidth',4)
-set(gca,'color','none','FontSize',36) 
+plot(td,ones(1,tf),':c','LineWidth',6)
+hold on
+xline(datetime(2020,DATA(1,2),DATA(1,1)-1)+days(62),'--k','LineWidth',4);
+hold on
+xline(datetime(2020,DATA(1,2),DATA(1,1)-1)+days(62+14),'--k','LineWidth',4);
+text(64,6.5,'LSSR','Color','k','FontSize',36)
+set(gca,'color','none','FontSize',36)
 ylabel('Rt','color','k')
 xlim([min(td) max(td)])
 grid on;
 grid minor;
-alpha(0.3)
-legend('Active Cases','Probable Cases','95% CI with Probable Cases','Rt with Probable Cases','95% CI without Probable Cases','Rt without Probable Cases','Rt =1','FontSize',24)
+alpha(0.5)
+legend('Active Cases','Probable Cases','95% CI with Probable Cases','Rt with Probable Cases','95% CI without Probable Cases','Rt without Probable Cases','Rt =1','Location','north','FontSize',24)
 ax = gca;
 ax.YAxis(1).Color = 'k';
 ax.YAxis(2).Color = 'k';
@@ -208,4 +235,4 @@ set(gca,'color','none','FontSize',36)
 grid on;
 grid minor;
 alpha(0.8)
-legend('Probable Cases','Active Cases','Recovered Cases')
+legend('Probable Cases (P)','Active/Confirmed Cases (I)','Recovered Cases (R)')
